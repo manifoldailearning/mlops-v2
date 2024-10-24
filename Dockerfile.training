@@ -1,0 +1,32 @@
+# Dockerfile.training
+
+# Use a lightweight Python base image
+FROM python:3.10-slim-buster
+
+# Set the working directory in the container
+WORKDIR /opt/ml/code
+
+# Install system-level dependencies
+RUN apt-get update --allow-releaseinfo-change && apt-get install -y --no-install-recommends \
+    build-essential \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    --allow-unauthenticated \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the requirements.txt and install dependencies
+COPY requirements.txt . 
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install the AWS SageMaker Python SDK and the SageMaker Training Toolkit
+RUN pip install --no-cache-dir sagemaker-training
+
+# Copy all the training scripts and source code
+COPY src /opt/ml/code/src
+
+# Set the environment variable to ensure Python can find the src package
+ENV PYTHONPATH="/opt/ml/code"
+
+# Set the entrypoint to train.py
+ENTRYPOINT ["python3", "/opt/ml/code/src/train.py"]

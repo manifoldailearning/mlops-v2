@@ -1,0 +1,61 @@
+# Configuration file for the package. This file sets the default values used across the codebase.
+
+# General Package Settings
+package_name: codebase
+
+# Paths for Data and Model Artifacts
+paths:
+  data_dir: data                                           # Directory containing the data files
+  artifacts_dir: src/trained_models                        # Directory for model artifacts
+
+artifacts:
+  pipeline_saved: saved_pipeline                           # Name of the saved pipeline
+  study_saved: saved_study                                  # Name of the saved study (Optuna)
+  best_model_saved: saved_model                             # Name of the best saved model
+
+
+# Feature Settings
+variables:
+  target: price                                            # The target variable for prediction
+
+  features:                                                # List of all features used for the model
+    - squarefeet
+    - bedrooms
+    - bathrooms
+    - neighborhood
+    - yearbuilt
+
+  categorical_features:                                    # List of categorical features
+    - neighborhood
+
+  numerical_features:                                      # List of numerical features
+    - squarefeet
+    - bedrooms
+    - bathrooms
+    - yearbuilt
+
+# Model Training Parameters
+# Model Training Parameters
+training_params:
+  test_size: 0.3                                           # Percentage of data to use for testing (split ratio)
+  random_state: 5                                          # Random state for reproducibility                                         # Random state for reproducibility
+
+# Model Hyperparameters (Optional, used for tuning)
+hyperparameters:
+  max_depth: 6                                             # Default maximum depth of the XGBoost model
+  learning_rate: 0.1                                       # Default learning rate
+  n_estimators: 100                                        # Default number of estimators
+
+# Environment-specific settings (Optional, useful for different deployment environments)
+environment:
+  dev:
+    random_state: 42
+    test_size: 0.25
+  test:
+    random_state: 0
+    test_size: 0.2
+
+image_uris:
+  preprocessing: "866824485776.dkr.ecr.us-east-1.amazonaws.com/demo-sagemaker-multimodel-preprocessing:latest"
+  training: "866824485776.dkr.ecr.us-east-1.amazonaws.com/demo-sagemaker-multimodel-training:latest"
+  model_registry: "866824485776.dkr.ecr.us-east-1.amazonaws.com/demo-sagemaker-multimodel-model-registry:latest"

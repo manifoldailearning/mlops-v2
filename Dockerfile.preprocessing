@@ -1,0 +1,29 @@
+# Dockerfile.preprocessing
+
+FROM python:3.11-slim-buster
+
+WORKDIR /app
+
+# Update package list with retry logic to handle transient errors
+RUN set -e; \
+    for i in 1 2 3; do \
+        apt-get update && apt-get install -y --no-install-recommends \
+        gnupg2 \
+        curl \
+        build-essential \
+        python3-dev && break || \
+        (echo "Retrying apt-get... ($i)" && sleep 5); \
+    done; \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file and install dependencies
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the preprocessing scripts
+COPY src /app/src
+
+# Make the Python script executable
+RUN chmod +x /app/src/pipeline.py
+
+CMD ["python3", "/app/src/pipeline.py"]
