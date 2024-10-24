@@ -77,4 +77,4 @@ virtualenv==20.26.3
 wcwidth==0.2.13
 widgetsnbextension==4.0.11
 xgboost==2.0.3
-sagemaker
+sagemaker==2.227.0
