@@ -27,9 +27,9 @@ pipeline_session = PipelineSession()
 model_package_group_name = "EndEndPackage"
 
 # Fetch image URIs from the config
-preprocessing_image_uri = config.image_uris.preprocessing
-training_image_uri = config.image_uris.training
-model_registry_image_uri = config.image_uris.model_registry
+preprocessing_image_uri = config.image_uris['preprocessing']
+training_image_uri = config.image_uris['training']
+model_registry_image_uri = config.image_uris['model_registry']
 
 # Preprocessing Step
 preprocessing_processor = Processor(
