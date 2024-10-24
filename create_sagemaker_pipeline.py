@@ -10,6 +10,7 @@ from sagemaker.model import Model
 from sagemaker.inputs import TrainingInput
 from sagemaker.workflow.steps import TrainingStep
 from sagemaker.workflow.pipeline import Pipeline
+from pathlib import Path
 # Adding the project root directory to sys.path
 import sys
 project_root = Path(__file__).resolve().parents[1]
