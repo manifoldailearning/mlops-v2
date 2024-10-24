@@ -1,6 +1,6 @@
 import sagemaker
 from sagemaker.workflow.steps import ProcessingStep, TrainingStep
-from sagemaker.workflow.model_step import RegisterModel
+from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.processing import ScriptProcessor
 from sagemaker.estimator import Estimator
 from sagemaker.model import Model
