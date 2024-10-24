@@ -61,5 +61,4 @@ image_uris:
   model_registry: "866824485776.dkr.ecr.us-east-1.amazonaws.com/demo-sagemaker-multimodel-model-registry:latest"
 
 # Sagemaker Execution role
-role_arn:
-  role_arn: "arn:aws:iam::866824485776:role/service-role/AmazonSageMaker-ExecutionRole-20240913T125305"
+role_arn: "arn:aws:iam::866824485776:role/service-role/AmazonSageMaker-ExecutionRole-20240913T125305"
