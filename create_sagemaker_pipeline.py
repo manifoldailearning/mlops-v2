@@ -21,7 +21,7 @@ from src.config.core import config
 
 region = boto3.Session().region_name
 sagemaker_session = sagemaker.session.Session() 
-role = config.role_arn.role
+role = config.role_arn.role_arn
 default_bucket = sagemaker_session.default_bucket()
 pipeline_session = PipelineSession()
 model_package_group_name = "EndEndPackage"
