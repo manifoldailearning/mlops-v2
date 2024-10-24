@@ -59,3 +59,6 @@ image_uris:
   preprocessing: "866824485776.dkr.ecr.us-east-1.amazonaws.com/demo-sagemaker-multimodel-preprocessing:latest"
   training: "866824485776.dkr.ecr.us-east-1.amazonaws.com/demo-sagemaker-multimodel-training:latest"
   model_registry: "866824485776.dkr.ecr.us-east-1.amazonaws.com/demo-sagemaker-multimodel-model-registry:latest"
+
+role_arn:
+  role: "arn:aws:iam::866824485776:role/service-role/AmazonSageMaker-ExecutionRole-20240913T125305"
