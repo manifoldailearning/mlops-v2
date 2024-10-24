@@ -65,6 +65,8 @@ class Config(BaseModel):
     training_params: TrainingParamsConfig  # Updated field name
     hyperparameters: HyperparametersConfig
     environment: EnvironmentConfig
+    image_uris: dict
+    role_arn: str
 
     class Config:
         protected_namespaces = ()
