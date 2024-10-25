@@ -189,3 +189,4 @@ def model_training(n_trials=10) -> optuna.study.Study:
 if __name__ == '__main__':
     setup_logging()
     model_training(n_trials=10)
+#test
