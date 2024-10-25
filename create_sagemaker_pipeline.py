@@ -2,14 +2,19 @@ import boto3
 import sagemaker
 import sagemaker.session
 from sagemaker.workflow.pipeline_context import PipelineSession
-from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
+from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor,ScriptProcessor
 from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.estimator import Estimator
 from sagemaker.model import Model
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.properties import PropertyFile
+from sagemaker.workflow.functions import JsonGet
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
 from sagemaker.inputs import TrainingInput
 from sagemaker.workflow.steps import TrainingStep
-from sagemaker.workflow.pipeline import Pipeline
+
 from pathlib import Path
 # Adding the project root directory to sys.path
 import sys
@@ -87,6 +92,66 @@ training_step = TrainingStep(
 # Ensure training_step runs after processing_step
 training_step.add_depends_on([processing_step])
 
+# Model Evaluation Step
+evaluation_script_uri = "s3://sagemaker-us-east-1-866824485776/processed-data/evaluation.py"  # Upload your evaluation script to S3
+
+evaluation_processor = ScriptProcessor(
+    image_uri="866824485776.dkr.ecr.us-east-1.amazonaws.com/demo-sagemaker-multimodel-training:latest",  # Using the training image
+    command=["python3"],
+    role=role,
+    instance_count=1,
+    instance_type="ml.m5.large",
+    sagemaker_session=sagemaker_session
+)
+
+evaluation_output_file = PropertyFile(
+    name="EvaluationReport",
+    output_name="evaluation_output",
+    path="evaluation.json"
+)
+
+evaluation_step = ProcessingStep(
+    name="ModelEvaluationStep",
+    processor=evaluation_processor,
+    inputs=[
+        ProcessingInput(
+            source=training_step.properties.ModelArtifacts.S3ModelArtifacts,
+            destination="/opt/ml/processing/model"
+        ),
+        ProcessingInput(
+            source=f"s3://{default_bucket}/processed-data/processed_data.csv",
+            destination="/opt/ml/processing/test_data"
+        )
+    ],
+    outputs=[
+        ProcessingOutput(
+            source="/opt/ml/processing/output",
+            destination=f"s3://{default_bucket}/evaluation-output",
+            output_name="evaluation_output"
+        )
+    ],
+    code=evaluation_script_uri,
+    property_files=[evaluation_output_file]
+)
+
+# Condition Step to Check Model Quality
+condition_step = ConditionStep(
+    name="CheckModelQuality",
+    conditions=[
+        ConditionLessThanOrEqualTo(
+            left=JsonGet(
+                step_name=evaluation_step.name,
+                property_file=evaluation_output_file,
+                json_path="model_quality.mse"
+            ),
+            right=10.0  # Threshold for the evaluation metric
+        )
+    ],
+    if_steps=[],
+    else_steps=[]
+)
+
+# Model Registration Step (Conditional on Evaluation)
 # Model Registration Step
 model = Model(
     image_uri=model_registry_image_uri,
@@ -102,10 +167,14 @@ register_step = RegisterModel(
     transform_instances=["ml.m5.large"],
     model_package_group_name="MyModelPackageGroup"
 )
+
+# Add Model Registration Step to `if_steps` if condition is met
+condition_step.if_steps = [register_step]
+
 # Create the SageMaker Pipeline
 pipeline = Pipeline(
     name="MLOpsPipeline",
-    steps=[processing_step, training_step, register_step],
+    steps=[processing_step, training_step, evaluation_step, condition_step],
     sagemaker_session=sagemaker_session
 )
 
