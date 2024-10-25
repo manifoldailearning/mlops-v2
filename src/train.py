@@ -8,6 +8,8 @@ import logging
 from sklearn.model_selection import train_test_split, cross_val_score
 import xgboost as xgb
 import optuna
+import tarfile
+import joblib  # Import joblib to save the model
 
 # Adding the project root directory to sys.path
 project_root = Path(__file__).resolve().parents[1]
@@ -159,10 +161,18 @@ def model_training(n_trials=10) -> optuna.study.Study:
 
         # Train the best model
         xgb_model_best = train_best_model(X_train, y_train, study.best_params)
+
+        # Save the model to the expected output directory
         model_output_dir = "/opt/ml/model"  # This is where SageMaker expects the model to be saved
         os.makedirs(model_output_dir, exist_ok=True)
-        xgb_model_best.save_model(f"{model_output_dir}/model.tar.gz")
-            # Save the pipeline, study, and model
+        model_file_path = os.path.join(model_output_dir, "xgboost_model.joblib")
+        joblib.dump(xgb_model_best, model_file_path)
+
+        # Create a tarball of the saved model
+        with tarfile.open(os.path.join(model_output_dir, "model.tar.gz"), "w:gz") as tar:
+            tar.add(model_file_path, arcname="xgboost_model.joblib")
+
+        # Save the pipeline and study (optional)
         save_pipeline(
             pipeline_to_persist=pipe_transformer,
             study_to_persist=study,
