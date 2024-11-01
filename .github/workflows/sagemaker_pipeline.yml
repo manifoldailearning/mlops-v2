@@ -68,21 +68,24 @@ jobs:
 
       - name: Build and Push Preprocessing Docker Image
         run: |
+          export DOCKER_CLI_EXPERIMENTAL=enabled
           docker buildx build --platform linux/amd64 \
             -t ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.preprocessing_name }}:latest \
-            -f ${{ env.PREPROCESSING_DOCKERFILE }} --push --output=type=docker .
+            -f ${{ env.PREPROCESSING_DOCKERFILE }} --push --output "type=image,push=true,oci-mediatypes=false" .
 
       - name: Build and Push Training Docker Image
         run: |
+          export DOCKER_CLI_EXPERIMENTAL=enabled
           docker buildx build --platform linux/amd64 \
             -t ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.training_name }}:latest \
-            -f ${{ env.TRAINING_DOCKERFILE }} --push --output=type=docker .
+            -f ${{ env.TRAINING_DOCKERFILE }} --push --output "type=image,push=true,oci-mediatypes=false" .
 
       - name: Build and Push Model Registry Docker Image
         run: |
+          export DOCKER_CLI_EXPERIMENTAL=enabled
           docker buildx build --platform linux/amd64 \
             -t ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.model_registry_name }}:latest \
-            -f ${{ env.MODEL_REGISTRY_DOCKERFILE }} --push --output=type=docker .
+            -f ${{ env.MODEL_REGISTRY_DOCKERFILE }} --push --output "type=image,push=true,oci-mediatypes=false" .
 
       - name: Install dependencies
         run: | 
