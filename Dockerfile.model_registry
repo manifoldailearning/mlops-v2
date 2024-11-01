@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir sagemaker boto3 Flask
 
 # Copy the model registry script and source code
 COPY src /opt/ml/code/src
-COPY model_registry.py /opt/ml/code/model_registry.py
+COPY src/model_registry.py /opt/ml/code/model_registry.py
 
 # Copy the serving script
 COPY serve.py /opt/ml/code/serve.py
