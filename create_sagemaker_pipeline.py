@@ -160,6 +160,7 @@ model = Model(
     role=role,
     model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts  # Use training output directly
 )
+
 register_step = RegisterModel(
     name="RegisterModelStep",
     model=model,
@@ -167,9 +168,13 @@ register_step = RegisterModel(
     response_types=["application/json"],
     inference_instances=["ml.m5.large"],
     transform_instances=["ml.m5.large"],
-    model_package_group_name="MyModelPackageGroup"
+    model_package_group_name="MyModelPackageGroup",
+    environment={
+        "MODEL_REGISTRY": "true",
+        "MODEL_NAME": "MyModel",
+        "MODEL_URI": training_step.properties.ModelArtifacts.S3ModelArtifacts
+    }
 )
-
 # Add Model Registration Step to `if_steps` if condition is met
 condition_step.if_steps = [register_step]
 

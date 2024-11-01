@@ -4,7 +4,7 @@
 FROM python:3.11-slim
 
 # Set the working directory in the container
-WORKDIR /opt/ml/code
+WORKDIR /opt/ml
 
 # Install system-level dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -15,11 +15,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install the AWS SageMaker Python SDK
-RUN pip install --no-cache-dir sagemaker boto3
+# Install the AWS SageMaker Python SDK and Flask for serving the model
+RUN pip install --no-cache-dir sagemaker boto3 Flask
 
-# Copy all the model registry scripts and source code
+# Copy the model registry script and source code
 COPY src /opt/ml/code/src
+COPY model_registry.py /opt/ml/code/model_registry.py
 
-# Set the entrypoint to model registry script
-CMD ["python", "/opt/ml/code/src/model_registry.py"]
+# Copy the serving script
+COPY serve.py /opt/ml/code/serve.py
+
+# Expose the port that SageMaker uses for health checks and inference
+EXPOSE 8080
+
+# Default command - serve or register based on the ENV
+CMD ["sh", "-c", "if [ \"$MODEL_REGISTRY\" = \"true\" ]; then python /opt/ml/code/model_registry.py --model-name \"$MODEL_NAME\" --model-uri \"$MODEL_URI\"; else python /opt/ml/code/serve.py; fi"]
