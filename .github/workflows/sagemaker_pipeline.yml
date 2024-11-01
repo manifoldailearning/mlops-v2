@@ -14,6 +14,7 @@ jobs:
       PREPROCESSING_DOCKERFILE: Dockerfile.preprocessing
       TRAINING_DOCKERFILE: Dockerfile.training
       MODEL_REGISTRY_DOCKERFILE: Dockerfile.model_registry
+      PIPELINE_NAME: 'MLOpsPipeline'
 
     steps:
       - name: Checkout code
@@ -96,3 +97,7 @@ jobs:
           AWS_DEFAULT_REGION: 'us-east-1'
         run: |
           python create_sagemaker_pipeline.py
+      
+      - name: Execute Pipeline
+        run: |
+          aws sagemaker start-pipeline-execution --pipeline-name $PIPELINE_NAME

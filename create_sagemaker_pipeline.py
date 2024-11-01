@@ -44,6 +44,8 @@ preprocessing_processor = Processor(
     instance_type="ml.m5.large"
 )
 
+# Ensure that dataset is present in the mentioned Source folder
+
 processing_step = ProcessingStep(
     name="PreprocessingStep",
     processor=preprocessing_processor,
