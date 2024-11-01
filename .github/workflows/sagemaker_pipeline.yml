@@ -68,23 +68,24 @@ jobs:
 
       - name: Build and Push Preprocessing Docker Image
         run: |
-          DOCKER_BUILDKIT=1 docker build \
+          DOCKER_BUILDKIT=0 docker build \
             -t ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.preprocessing_name }}:latest \
             -f ${{ env.PREPROCESSING_DOCKERFILE }} .
           docker push ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.preprocessing_name }}:latest
 
       - name: Build and Push Training Docker Image
         run: |
-          DOCKER_BUILDKIT=1 docker build \
+          DOCKER_BUILDKIT=0 docker build \
             -t ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.training_name }}:latest \
             -f ${{ env.TRAINING_DOCKERFILE }} .
           docker push ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.training_name }}:latest
 
       - name: Build and Push Model Registry Docker Image
         run: |
-          docker buildx build --platform linux/amd64 \
+          DOCKER_BUILDKIT=0 docker build \
             -t ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.model_registry_name }}:latest \
-            -f ${{ env.MODEL_REGISTRY_DOCKERFILE }} --push .
+            -f ${{ env.MODEL_REGISTRY_DOCKERFILE }} .
+          docker push ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.model_registry_name }}:latest
       
       - name: Install dependencies
         run: | 
