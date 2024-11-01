@@ -11,17 +11,29 @@ def lambda_handler(event, context):
     model_package_arn = event['detail']['ModelPackageArn']
     
     # Define endpoint configurations
+    model_name = "MyApprovedModel"  # Name of the SageMaker model to be created
     endpoint_name = "MyApprovedModelEndpoint"
     endpoint_config_name = "MyApprovedModelEndpointConfig"
     
     try:
+        # Create a SageMaker Model from the model package
+        response = sagemaker_client.create_model(
+            ModelName=model_name,
+            PrimaryContainer={
+                'ModelPackageName': model_package_arn,
+                'Environment': {},  # You can add any additional environment variables here
+            },
+            ExecutionRoleArn=os.getenv('SAGEMAKER_ROLE_ARN')  # Make sure to set this in your Lambda environment variables
+        )
+        print(f"Created model: {response}")
+
         # Create an endpoint configuration
         response = sagemaker_client.create_endpoint_config(
             EndpointConfigName=endpoint_config_name,
             ProductionVariants=[
                 {
                     'VariantName': 'AllTraffic',
-                    'ModelName': model_package_arn,
+                    'ModelName': model_name,  # Use the created model name here
                     'InitialInstanceCount': 1,
                     'InstanceType': 'ml.m5.large',
                     'InitialVariantWeight': 1.0
@@ -38,7 +50,7 @@ def lambda_handler(event, context):
                 EndpointConfigName=endpoint_config_name
             )
             print(f"Updated endpoint: {response}")
-        except sagemaker_client.exceptions.ResourceNotFound:
+        except sagemaker_client.exceptions.ResourceNotFoundException:
             # Endpoint does not exist, create a new one
             response = sagemaker_client.create_endpoint(
                 EndpointName=endpoint_name,
