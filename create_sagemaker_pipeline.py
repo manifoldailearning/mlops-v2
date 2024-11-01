@@ -35,6 +35,9 @@ model_package_group_name = "EndEndPackage"
 preprocessing_image_uri = config.image_uris['preprocessing']
 training_image_uri = config.image_uris['training']
 model_registry_image_uri = config.image_uris['model_registry']
+n_estimators = config.hyperparameters['n_estimators']
+max_depth =  config.hyperparameters['max_depth']
+learning_rate = config.hyperparameters['learning_rate']
 
 # Preprocessing Step
 preprocessing_processor = Processor(
@@ -72,9 +75,9 @@ training_estimator = Estimator(
     instance_count=1,
     instance_type="ml.c5.xlarge",
     hyperparameters={
-        "n_estimators": 100,
-        "max_depth": 5,
-        "learning_rate": 0.1
+        "n_estimators": n_estimators,
+        "max_depth": max_depth,
+        "learning_rate": learning_rate
     },
     output_path=f"s3://{default_bucket}/training-output",
     sagemaker_session=sagemaker_session
