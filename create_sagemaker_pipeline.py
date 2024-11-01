@@ -35,9 +35,9 @@ model_package_group_name = "EndEndPackage"
 preprocessing_image_uri = config.image_uris['preprocessing']
 training_image_uri = config.image_uris['training']
 model_registry_image_uri = config.image_uris['model_registry']
-n_estimators = config.hyperparameters['n_estimators']
-max_depth =  config.hyperparameters['max_depth']
-learning_rate = config.hyperparameters['learning_rate']
+n_estimators = config.hyperparameters.n_estimators
+max_depth =  config.hyperparameters.max_depth
+learning_rate = config.hyperparameters.learning_rate
 
 # Preprocessing Step
 preprocessing_processor = Processor(
