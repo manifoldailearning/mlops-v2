@@ -6,9 +6,10 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /opt/ml
 
-# Install system-level dependencies
+# Install system-level dependencies, including `tar` for extracting model.tar.gz
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    tar \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements.txt and install dependencies
@@ -29,4 +30,8 @@ COPY serve.py /opt/ml/code/serve.py
 EXPOSE 8080
 
 # Default command - serve or register based on the ENV
-CMD ["sh", "-c", "if [ \"$MODEL_REGISTRY\" = \"true\" ]; then python /opt/ml/code/model_registry.py --model-name \"$MODEL_NAME\" --model-uri \"$MODEL_URI\"; else python /opt/ml/code/serve.py; fi"]
+CMD ["sh", "-c", "if [ \"$MODEL_REGISTRY\" = \"true\" ]; then \
+        python /opt/ml/code/model_registry.py --model-name \"$MODEL_NAME\" --model-uri \"$MODEL_URI\"; \
+    else \
+        python /opt/ml/code/serve.py; \
+    fi"]

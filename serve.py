@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import joblib
 import os
+import tarfile
 import logging
 
 # Initialize Flask app and logger
@@ -8,20 +9,35 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load the model once the server starts
-model = None
-model_path = os.getenv('MODEL_PATH', '/opt/ml/model')  # Default path in SageMaker
-model_file = os.path.join(model_path, 'xgboost_model.joblib')
+# Paths
+model_dir = os.getenv('MODEL_PATH', '/opt/ml/model')
+tar_file = os.path.join(model_dir, 'model.tar.gz')
+model_file = os.path.join(model_dir, 'xgboost_model.joblib')
 
+# Extract model if tar file exists
+if os.path.exists(tar_file):
+    try:
+        logger.info(f"Extracting model from {tar_file}")
+        with tarfile.open(tar_file) as tar:
+            tar.extractall(path=model_dir)
+        logger.info("Model extracted successfully.")
+    except Exception as e:
+        logger.error(f"Error extracting model: {str(e)}")
+        raise
+else:
+    logger.error(f"Tar file {tar_file} not found. Ensure the model artifact is uploaded correctly.")
+
+# Load the model
+model = None
 try:
     if os.path.exists(model_file):
-        logger.info("Loading model from %s", model_file)
+        logger.info(f"Loading model from {model_file}")
         model = joblib.load(model_file)
         logger.info("Model loaded successfully.")
     else:
-        logger.error("Model file not found at %s", model_file)
+        logger.error(f"Model file {model_file} not found after extraction.")
 except Exception as e:
-    logger.error("Error loading model: %s", str(e))
+    logger.error(f"Error loading model: {str(e)}")
     raise
 
 # Health check endpoint
@@ -29,11 +45,11 @@ except Exception as e:
 def ping():
     """
     Health check endpoint.
-    Returns HTTP 200 if the model is loaded successfully, otherwise HTTP 503.
+    Returns 200 OK if the model is loaded successfully, otherwise 503.
     """
     health = model is not None
     status = 200 if health else 503
-    logger.info("Ping request: Model health = %s", "Healthy" if health else "Unhealthy")
+    logger.info(f"Ping request: Model health = {'Healthy' if health else 'Unhealthy'}")
     return jsonify({'status': 'Healthy' if health else 'Unhealthy'}), status
 
 # Inference endpoint
@@ -56,7 +72,7 @@ def predict():
         return jsonify({'error': 'Invalid input data: Expected a list'}), 400
 
     try:
-        # Convert input to a 2D array for prediction
+        # Perform prediction
         import numpy as np
         input_array = np.array(input_data)
 
@@ -65,20 +81,12 @@ def predict():
 
         logger.info(f"Input array shape: {input_array.shape}")
 
-        # Validate input dimensions
-        if input_array.shape[1] != model.n_features_in_:
-            error_message = f"Input has {input_array.shape[1]} features, but model expects {model.n_features_in_} features."
-            logger.error(error_message)
-            return jsonify({'error': 'Prediction failed', 'details': error_message}), 400
-
-        # Perform prediction
         predictions = model.predict(input_array)
         logger.info(f"Predictions: {predictions.tolist()}")
         return jsonify(predictions.tolist())
     except Exception as e:
         logger.error(f"Error during prediction: {str(e)}")
         return jsonify({'error': 'Prediction failed', 'details': str(e)}), 500
-
 
 if __name__ == '__main__':
     # Run the Flask server on the expected host and port
