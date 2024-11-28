@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Load the model once the server starts
 model = None
 model_path = os.getenv('MODEL_PATH', '/opt/ml/model')  # Default path in SageMaker
-model_file = os.path.join(model_path, 'model.joblib')
+model_file = os.path.join(model_path, 'xgboost_model.joblib')
 
 try:
     if os.path.exists(model_file):
@@ -48,7 +48,7 @@ def predict():
         return jsonify({'error': 'Invalid input format: Expected JSON'}), 400
 
     input_data = request.get_json()
-    logger.info("Received input data: %s", input_data)
+    logger.info(f"Received input data: {input_data}")
 
     # Validate input data format
     if input_data is None or not isinstance(input_data, list):
@@ -56,13 +56,29 @@ def predict():
         return jsonify({'error': 'Invalid input data: Expected a list'}), 400
 
     try:
+        # Convert input to a 2D array for prediction
+        import numpy as np
+        input_array = np.array(input_data)
+
+        if len(input_array.shape) == 1:
+            input_array = input_array.reshape(1, -1)  # Convert 1D array to 2D
+
+        logger.info(f"Input array shape: {input_array.shape}")
+
+        # Validate input dimensions
+        if input_array.shape[1] != model.n_features_in_:
+            error_message = f"Input has {input_array.shape[1]} features, but model expects {model.n_features_in_} features."
+            logger.error(error_message)
+            return jsonify({'error': 'Prediction failed', 'details': error_message}), 400
+
         # Perform prediction
-        predictions = model.predict(input_data)
-        logger.info("Predictions: %s", predictions.tolist())
+        predictions = model.predict(input_array)
+        logger.info(f"Predictions: {predictions.tolist()}")
         return jsonify(predictions.tolist())
     except Exception as e:
-        logger.error("Error during prediction: %s", str(e))
+        logger.error(f"Error during prediction: {str(e)}")
         return jsonify({'error': 'Prediction failed', 'details': str(e)}), 500
+
 
 if __name__ == '__main__':
     # Run the Flask server on the expected host and port
