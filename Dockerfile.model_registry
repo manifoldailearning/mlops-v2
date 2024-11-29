@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir sagemaker boto3 Flask joblib
 
 # Copy the scripts for registry and serving
-COPY model_registry.py /opt/ml/code/model_registry.py
+COPY src/model_registry.py /opt/ml/code/model_registry.py
 COPY serve.py /opt/ml/code/serve.py
 
 # Expose the SageMaker port for serving
