@@ -17,7 +17,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install the AWS SageMaker Python SDK and Flask for serving the model
-RUN pip install --no-cache-dir sagemaker boto3 Flask
+RUN pip install --no-cache-dir sagemaker boto3 Flask joblib
 
 # Copy the model registry script and source code
 COPY src /opt/ml/code/src

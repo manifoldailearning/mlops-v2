@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 
 sagemaker_client = boto3.client('sagemaker')
+s3_uri_loacation = os.getenv('S3_URI_LOCATION')
 
 def lambda_handler(event, context):
     print("Received event:", json.dumps(event))
@@ -37,7 +38,10 @@ def lambda_handler(event, context):
                     ModelName=model_name,
                     PrimaryContainer={
                         'ModelPackageName': model_package_arn,
-                        'Environment': {},  # Add environment variables if needed
+                        'Environment': {
+                            "MODEL_NAME": model_name,
+                            "MODEL_URI":s3_uri_loacation
+                        },  # Add environment variables if needed
                     },
                     ExecutionRoleArn=sagemaker_role_arn
                 )

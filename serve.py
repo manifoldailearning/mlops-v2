@@ -1,93 +1,68 @@
-from flask import Flask, request, jsonify
-import joblib
 import os
 import tarfile
-import logging
+import boto3
+from flask import Flask, jsonify, request
 
-# Initialize Flask app and logger
+# Initialize Flask app
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-# Paths
-model_dir = os.getenv('MODEL_PATH', '/opt/ml/model')
-tar_file = os.path.join(model_dir, 'model.tar.gz')
-model_file = os.path.join(model_dir, 'xgboost_model.joblib')
+# Define default model path
+model_path = os.getenv('MODEL_PATH', '/opt/ml/model')
+model_uri = os.getenv('MODEL_URI')  # S3 URI for the model artifact
 
-# Extract model if tar file exists
-if os.path.exists(tar_file):
-    try:
-        logger.info(f"Extracting model from {tar_file}")
-        with tarfile.open(tar_file) as tar:
-            tar.extractall(path=model_dir)
-        logger.info("Model extracted successfully.")
-    except Exception as e:
-        logger.error(f"Error extracting model: {str(e)}")
-        raise
-else:
-    logger.error(f"Tar file {tar_file} not found. Ensure the model artifact is uploaded correctly.")
+# Ensure model directory exists
+os.makedirs(model_path, exist_ok=True)
 
-# Load the model
-model = None
-try:
-    if os.path.exists(model_file):
-        logger.info(f"Loading model from {model_file}")
-        model = joblib.load(model_file)
-        logger.info("Model loaded successfully.")
+# Download and extract model.tar.gz if MODEL_URI is set
+if model_uri:
+    print(f"Downloading and extracting model from {model_uri}...")
+    s3 = boto3.client('s3')
+    
+    # Parse bucket and key from MODEL_URI
+    if model_uri.startswith("s3://"):
+        bucket, key = model_uri.replace("s3://", "").split("/", 1)
     else:
-        logger.error(f"Model file {model_file} not found after extraction.")
-except Exception as e:
-    logger.error(f"Error loading model: {str(e)}")
-    raise
+        raise ValueError("Invalid MODEL_URI. Expected an S3 URI.")
+
+    # Download model.tar.gz
+    local_tar_path = os.path.join(model_path, 'model.tar.gz')
+    s3.download_file(bucket, key, local_tar_path)
+    
+    # Extract model.tar.gz
+    with tarfile.open(local_tar_path) as tar:
+        tar.extractall(path=model_path)
+    print(f"Model extracted to {model_path}")
+
+# Load the model file (e.g., xgboost_model.joblib)
+import joblib
+model_file = os.path.join(model_path, 'xgboost_model.joblib')
+model = None
+if os.path.exists(model_file):
+    print(f"Loading model from {model_file}...")
+    model = joblib.load(model_file)
+    print("Model loaded successfully.")
+else:
+    raise FileNotFoundError(f"Model file not found at {model_file}")
 
 # Health check endpoint
 @app.route('/ping', methods=['GET'])
 def ping():
-    """
-    Health check endpoint.
-    Returns 200 OK if the model is loaded successfully, otherwise 503.
-    """
+    """Health check endpoint."""
     health = model is not None
     status = 200 if health else 503
-    logger.info(f"Ping request: Model health = {'Healthy' if health else 'Unhealthy'}")
-    return jsonify({'status': 'Healthy' if health else 'Unhealthy'}), status
+    return jsonify(status='Healthy' if health else 'Unhealthy'), status
 
-# Inference endpoint
+# Prediction endpoint
 @app.route('/invocations', methods=['POST'])
 def predict():
-    """
-    Model inference endpoint.
-    Expects input in JSON format and returns predictions.
-    """
-    if not request.is_json:
-        logger.error("Invalid input format: Expected JSON")
-        return jsonify({'error': 'Invalid input format: Expected JSON'}), 400
+    """Prediction endpoint."""
+    data = request.get_json()
+    if not isinstance(data, list):
+        return jsonify(error="Invalid input format. Expected a list."), 400
 
-    input_data = request.get_json()
-    logger.info(f"Received input data: {input_data}")
+    predictions = model.predict(data)
+    return jsonify(predictions.tolist())
 
-    # Validate input data format
-    if input_data is None or not isinstance(input_data, list):
-        logger.error("Invalid input data: Expected a list")
-        return jsonify({'error': 'Invalid input data: Expected a list'}), 400
-
-    try:
-        # Perform prediction
-        import numpy as np
-        input_array = np.array(input_data)
-
-        if len(input_array.shape) == 1:
-            input_array = input_array.reshape(1, -1)  # Convert 1D array to 2D
-
-        logger.info(f"Input array shape: {input_array.shape}")
-
-        predictions = model.predict(input_array)
-        logger.info(f"Predictions: {predictions.tolist()}")
-        return jsonify(predictions.tolist())
-    except Exception as e:
-        logger.error(f"Error during prediction: {str(e)}")
-        return jsonify({'error': 'Prediction failed', 'details': str(e)}), 500
-
+# Run the Flask app
 if __name__ == '__main__':
-    # Run the Flask server on the expected host and port
     app.run(host='0.0.0.0', port=8080)
