@@ -10,35 +10,41 @@ def lambda_handler(event, context):
     print("Received event:", json.dumps(event))
     
     # Extract the model package ARN from the event
-    model_package_arn = event['detail']['ModelPackageArn']
+    model_package_arn = event.get('detail', {}).get('ModelPackageArn')
+    if not model_package_arn:
+        raise ValueError("ModelPackageArn not found in event details.")
     
-    # Append timestamp to make names unique
+    # Generate unique names for model, endpoint config, and endpoint
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     model_name = f"MyApprovedModel-{timestamp}"
-    endpoint_name = f"MyApprovedModelEndpoint-{timestamp}"
+    endpoint_name = f"MyApprovedModelEndpoint"
     endpoint_config_name = f"MyApprovedModelEndpointConfig-{timestamp}"
-    
+
+    # Environment variables
+    sagemaker_role_arn = os.getenv('SAGEMAKER_ROLE_ARN')
+    if not sagemaker_role_arn:
+        raise ValueError("Environment variable 'SAGEMAKER_ROLE_ARN' must be set.")
+
     max_retries = 3
     sleep_seconds = 10  # Seconds to wait between retries
     endpoint_creation_timeout = 600  # Timeout for endpoint creation (seconds)
 
     try:
-        # Create a SageMaker Model from the model package
+        # Step 1: Create a SageMaker Model
         for attempt in range(max_retries):
             try:
                 response = sagemaker_client.create_model(
                     ModelName=model_name,
                     PrimaryContainer={
                         'ModelPackageName': model_package_arn,
-                        'Environment': {},  # You can add any additional environment variables here
+                        'Environment': {},  # Add environment variables if needed
                     },
-                    ExecutionRoleArn=os.getenv('SAGEMAKER_ROLE_ARN')  # Set this in Lambda environment variables
+                    ExecutionRoleArn=sagemaker_role_arn
                 )
                 print(f"Created model: {response}")
                 break
             except sagemaker_client.exceptions.ClientError as e:
-                # If the model already exists, continue to use it
-                if e.response['Error']['Code'] == 'ValidationException' and 'already exists' in e.response['Error']['Message']:
+                if "already exists" in str(e):
                     print("Model already exists, proceeding with the existing model.")
                     break
                 else:
@@ -48,7 +54,7 @@ def lambda_handler(event, context):
                     else:
                         raise
 
-        # Create an endpoint configuration
+        # Step 2: Create an Endpoint Configuration
         for attempt in range(max_retries):
             try:
                 response = sagemaker_client.create_endpoint_config(
@@ -56,7 +62,7 @@ def lambda_handler(event, context):
                     ProductionVariants=[
                         {
                             'VariantName': 'AllTraffic',
-                            'ModelName': model_name,  # Use the created model name here
+                            'ModelName': model_name,
                             'InitialInstanceCount': 1,
                             'InstanceType': 'ml.m5.large',
                             'InitialVariantWeight': 1.0
@@ -66,8 +72,7 @@ def lambda_handler(event, context):
                 print(f"Created endpoint configuration: {response}")
                 break
             except sagemaker_client.exceptions.ClientError as e:
-                # If endpoint config already exists, continue to use it
-                if e.response['Error']['Code'] == 'ValidationException' and 'already exists' in e.response['Error']['Message']:
+                if "already exists" in str(e):
                     print("Endpoint configuration already exists, proceeding with the existing config.")
                     break
                 else:
@@ -77,15 +82,27 @@ def lambda_handler(event, context):
                     else:
                         raise
 
-        # Create the endpoint
+        # Step 3: Create or Update the Endpoint
         try:
-            response = sagemaker_client.create_endpoint(
-                EndpointName=endpoint_name,
-                EndpointConfigName=endpoint_config_name
-            )
-            print(f"Created endpoint: {response}")
+            try:
+                response = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+                print(f"Endpoint exists: {endpoint_name}, updating...")
+                sagemaker_client.update_endpoint(
+                    EndpointName=endpoint_name,
+                    EndpointConfigName=endpoint_config_name
+                )
+            except sagemaker_client.exceptions.ClientError as e:
+                if "Could not find endpoint" in str(e):
+                    print(f"Endpoint {endpoint_name} does not exist, creating a new one.")
+                    response = sagemaker_client.create_endpoint(
+                        EndpointName=endpoint_name,
+                        EndpointConfigName=endpoint_config_name
+                    )
+                else:
+                    raise
 
-            # Wait for endpoint creation
+            # Step 4: Wait for Endpoint to Be InService
+            print(f"Waiting for endpoint {endpoint_name} to be InService...")
             elapsed_time = 0
             while elapsed_time < endpoint_creation_timeout:
                 response = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
@@ -104,23 +121,18 @@ def lambda_handler(event, context):
             if elapsed_time >= endpoint_creation_timeout:
                 raise TimeoutError(f"Endpoint creation timed out for {endpoint_name}")
 
-        except sagemaker_client.exceptions.ResourceNotFound:
-            print(f"Endpoint not found, retrying creation in {sleep_seconds} seconds...")
-            time.sleep(sleep_seconds)
-            response = sagemaker_client.create_endpoint(
-                EndpointName=endpoint_name,
-                EndpointConfigName=endpoint_config_name
-            )
-            print(f"Created endpoint: {response}")
+        except Exception as e:
+            print(f"Error during endpoint creation or update: {str(e)}")
+            raise
 
         return {
             'statusCode': 200,
-            'body': json.dumps('Deployment triggered successfully.')
+            'body': json.dumps(f"Deployment started successfully for endpoint: {endpoint_name}")
         }
 
     except Exception as e:
         print(f"Error occurred: {str(e)}")
         return {
             'statusCode': 500,
-            'body': json.dumps(f'Error occurred during deployment: {str(e)}')
+            'body': json.dumps(f"Error occurred during deployment: {str(e)}")
         }
