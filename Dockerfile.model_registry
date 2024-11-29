@@ -6,30 +6,27 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /opt/ml
 
-# Install system-level dependencies, including `tar` for extracting model.tar.gz
+# Install system-level dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     tar \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements.txt and install dependencies
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install the AWS SageMaker Python SDK and Flask for serving the model
+# Install the AWS SDK and Flask
 RUN pip install --no-cache-dir sagemaker boto3 Flask joblib
 
-# Copy the model registry script and source code
-COPY src /opt/ml/code/src
-COPY src/model_registry.py /opt/ml/code/model_registry.py
-
-# Copy the serving script
+# Copy the scripts for registry and serving
+COPY model_registry.py /opt/ml/code/model_registry.py
 COPY serve.py /opt/ml/code/serve.py
 
-# Expose the port that SageMaker uses for health checks and inference
+# Expose the SageMaker port for serving
 EXPOSE 8080
 
-# Default command - serve or register based on the ENV
+# Default command to decide workflow
 CMD ["sh", "-c", "if [ \"$MODEL_REGISTRY\" = \"true\" ]; then \
         python /opt/ml/code/model_registry.py --model-name \"$MODEL_NAME\" --model-uri \"$MODEL_URI\"; \
     else \
