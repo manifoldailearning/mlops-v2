@@ -73,8 +73,8 @@ def main():
     target_column = "price"
 
     # Reorder columns if necessary
-    columns = [target_column] + [col for col in data.columns if col != target_column]
-    data = data[columns]
+    columns = [target_column] + [col for col in df_transformed.columns if col != target_column]
+    df_transformed = df_transformed[columns]
     df_transformed.to_csv(output_path, index=False)
 
     _logger.info("Preprocessing complete.")
