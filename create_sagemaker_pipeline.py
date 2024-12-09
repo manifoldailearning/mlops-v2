@@ -51,7 +51,7 @@ processing_step = ProcessingStep(
     processor=preprocessing_processor,
     inputs=[
         ProcessingInput(
-            source=f"s3://{default_bucket}/raw-data",
+            source=f"s3://{default_bucket}/raw-data/housing_price_dataset.csv",
             destination="/opt/ml/processing/input"
         )
     ],
