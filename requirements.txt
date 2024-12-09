@@ -14,3 +14,5 @@ sagemaker==2.159.0          # Latest for SageMaker pipelines
 
 # Utility Libraries
 colorlog==6.7.0             # Optional for colored logs
+pydantic
+pydantic_core
