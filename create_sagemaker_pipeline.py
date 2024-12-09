@@ -66,22 +66,26 @@ processing_step = ProcessingStep(
         )
     ]
 )
-
-
-# Training Step
 training_estimator = Estimator(
-    image_uri=training_image_uri,
+    image_uri=sagemaker.image_uris.retrieve("xgboost", "us-east-1", "1.5-1"),
     role=role,
     instance_count=1,
-    instance_type="ml.c5.xlarge",
+    instance_type="ml.m5.large",
+    source_dir="https://github.com/manifoldailearning/mlops-v2.git",
+    entry_point="src/train.py",
     hyperparameters={
-        "n_estimators": n_estimators,
-        "max_depth": max_depth,
-        "learning_rate": learning_rate
+        "objective": "reg:squarederror",
+        "num_round": 100,
+        "max_depth": 6,
+        "eta": 0.3
+    },
+    environment={
+        "TARGET_COLUMN": "price"  # Update as needed
     },
     output_path=f"s3://{default_bucket}/training-output",
     sagemaker_session=sagemaker_session
 )
+
 # Define the Training Step
 training_step = TrainingStep(
     name="TrainingStep",
@@ -97,11 +101,15 @@ training_step = TrainingStep(
 # Ensure training_step runs after processing_step
 training_step.add_depends_on([processing_step])
 
-# Model Evaluation Step
-evaluation_script_uri = "s3://sagemaker-us-east-1-866824485776/processed-data/evaluation.py"  # Upload your evaluation script to S3
+evaluation_image_uri = sagemaker.image_uris.retrieve(
+    framework="sklearn",
+    region=region,
+    version="0.23-1"
+)
 
+# Updated Evaluation Processor
 evaluation_processor = ScriptProcessor(
-    image_uri="866824485776.dkr.ecr.us-east-1.amazonaws.com/demo-sagemaker-multimodel-training:latest",  # Using the training image
+    image_uri=evaluation_image_uri,
     command=["python3"],
     role=role,
     instance_count=1,
@@ -109,12 +117,14 @@ evaluation_processor = ScriptProcessor(
     sagemaker_session=sagemaker_session
 )
 
+# Property File to Capture Evaluation Results
 evaluation_output_file = PropertyFile(
     name="EvaluationReport",
     output_name="evaluation_output",
     path="evaluation.json"
 )
 
+# Evaluation Step with Updated Parameters
 evaluation_step = ProcessingStep(
     name="ModelEvaluationStep",
     processor=evaluation_processor,
@@ -135,7 +145,7 @@ evaluation_step = ProcessingStep(
             output_name="evaluation_output"
         )
     ],
-    code=evaluation_script_uri,
+    code="evaluation.py",  # Make sure this file is in the correct path
     property_files=[evaluation_output_file]
 )
 
@@ -149,46 +159,39 @@ condition_step = ConditionStep(
                 property_file=evaluation_output_file,
                 json_path="model_quality.mse"
             ),
-            right=10.0  # Threshold for the evaluation metric
+            right=10.0  # Example MSE threshold
         )
     ],
     if_steps=[],
     else_steps=[]
 )
-
 # Model Registration Step (Conditional on Evaluation)
-# Model Registration Step
-model = Model(
-    image_uri=model_registry_image_uri,
-    role=role,
-    model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts  # Use training output directly
-)
 
+from sagemaker.workflow.step_collections import RegisterModel
+
+# Register Model Step (No environment parameter)
 register_step = RegisterModel(
     name="RegisterModelStep",
-    model=model,
-    content_types=["application/json"],
-    response_types=["application/json"],
-    inference_instances=["ml.m5.large"],
-    transform_instances=["ml.m5.large"],
-    model_package_group_name="MyModelPackageGroup",
-    environment={
-        "MODEL_REGISTRY": "true",
-        "MODEL_NAME": "MyModel",
-        "MODEL_URI": training_step.properties.ModelArtifacts.S3ModelArtifacts
-    }
+    estimator=training_estimator,  # Use the training estimator directly
+    model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts,  # Use training output
+    content_types=["text/csv"],  # Supported input format
+    response_types=["text/csv"],  # Supported output format
+    inference_instances=["ml.m5.large"],  # Endpoint instance types
+    transform_instances=["ml.m5.large"],  # Batch transform instance types
+    model_package_group_name="MyModelPackageGroup"
 )
-# Add Model Registration Step to `if_steps` if condition is met
+
+# Add the Model Registration Step to the conditional check
 condition_step.if_steps = [register_step]
 
-# Create the SageMaker Pipeline
+# Create or update the SageMaker Pipeline
 pipeline = Pipeline(
     name="MLOpsPipeline",
     steps=[processing_step, training_step, evaluation_step, condition_step],
     sagemaker_session=sagemaker_session
 )
 
-# Create or update the pipeline
+# Deploy or update the pipeline in SageMaker
 pipeline.upsert(role_arn=role)
 
 print("Pipeline created successfully!")

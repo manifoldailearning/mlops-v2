@@ -69,6 +69,12 @@ def main():
 
     # Save the processed data to the output path
     _logger.info(f"Saving processed data to {output_path}")
+    # Ensure target column "price" is the first column
+    target_column = "price"
+
+    # Reorder columns if necessary
+    columns = [target_column] + [col for col in data.columns if col != target_column]
+    data = data[columns]
     df_transformed.to_csv(output_path, index=False)
 
     _logger.info("Preprocessing complete.")
