@@ -17,7 +17,7 @@ RUN set -e; \
     rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file and install dependencies
-COPY requirements.txt /app/requirements.txt
+COPY requirements-preprocessing.txt /app/requirements-preprocessing.txt
 RUN pip install --no-cache-dir -r requirements-preprocessing.txt
 
 # Copy the preprocessing scripts
