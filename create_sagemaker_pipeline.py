@@ -72,7 +72,7 @@ training_estimator = Estimator(
     instance_count=1,
     instance_type="ml.m5.large",
     source_dir="https://github.com/manifoldailearning/mlops-v2.git",
-    entry_point="src/train.py",
+    entry_point="train.py",
     hyperparameters={
         "objective": "reg:squarederror",
         "num_round": 100,
