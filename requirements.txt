@@ -1,5 +1,6 @@
 # Core ML Libraries
-pandas==1.3.5            # Stable with built-in containers
+pandas==1.3.5   
+numpy==1.21.6           # Stable with built-in containers
 scikit-learn==0.24.2     # Supported by SageMaker built-in containers
 
 # AWS SDK
@@ -8,6 +9,7 @@ sagemaker==2.149.0       # SageMaker SDK for pipeline creation
 
 # Utility Libraries (Optional)
 colorlog==6.6.0          # Optional for better logging
-
+# Cython and Build Tools (Avoid pyproject.toml Errors)
+Cython==0.29.24   
 setuptools==59.5.0  # Avoids `numpy.distutils` deprecation issues
 wheel==0.37.1
