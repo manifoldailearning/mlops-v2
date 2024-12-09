@@ -11,9 +11,6 @@ jobs:
 
     env:
       AWS_REGION: us-east-1
-      PREPROCESSING_DOCKERFILE: Dockerfile.preprocessing
-      TRAINING_DOCKERFILE: Dockerfile.training
-      MODEL_REGISTRY_DOCKERFILE: Dockerfile.model_registry
       PIPELINE_NAME: 'MLOpsPipeline'
 
     steps:
@@ -28,11 +25,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Install AWS CLI v2
+      - name: Update AWS CLI v2
         run: |
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip
-          sudo ./aws/install
+          sudo ./aws/install --update
           aws --version
 
       - name: Configure AWS Credentials
@@ -44,53 +41,36 @@ jobs:
 
       - name: Get AWS Account ID
         id: get_account_id
-        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_ENV
+        run: echo "ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_ENV
 
-      - name: Set ECR Repository Names
-        id: set_repo_names
+      - name: Define Docker Repository Names
         run: |
-          echo "preprocessing_name=demo-sagemaker-multimodel-preprocessing" >> $GITHUB_ENV
-          echo "training_name=demo-sagemaker-multimodel-training" >> $GITHUB_ENV
-          echo "model_registry_name=demo-sagemaker-multimodel-model-registry" >> $GITHUB_ENV
+          echo "PREPROCESSING_NAME=demo-sagemaker-multimodel-preprocessing" >> $GITHUB_ENV
+          echo "TRAINING_NAME=demo-sagemaker-multimodel-training" >> $GITHUB_ENV
+          echo "MODEL_REGISTRY_NAME=demo-sagemaker-multimodel-model-registry" >> $GITHUB_ENV
 
       - name: Ensure ECR Repositories Exist
         run: |
-          aws ecr describe-repositories --repository-names "${{ env.preprocessing_name }}" --region ${{ env.AWS_REGION }} || \
-          aws ecr create-repository --repository-name "${{ env.preprocessing_name }}" --region ${{ env.AWS_REGION }}
-
-          aws ecr describe-repositories --repository-names "${{ env.training_name }}" --region ${{ env.AWS_REGION }} || \
-          aws ecr create-repository --repository-name "${{ env.training_name }}" --region ${{ env.AWS_REGION }}
-
-          aws ecr describe-repositories --repository-names "${{ env.model_registry_name }}" --region ${{ env.AWS_REGION }} || \
-          aws ecr create-repository --repository-name "${{ env.model_registry_name }}" --region ${{ env.AWS_REGION }}
+          for repo in ${{ env.PREPROCESSING_NAME }} ${{ env.TRAINING_NAME }} ${{ env.MODEL_REGISTRY_NAME }}; do
+            aws ecr describe-repositories --repository-names "$repo" --region ${{ env.AWS_REGION }} || \
+            aws ecr create-repository --repository-name "$repo" --region ${{ env.AWS_REGION }}
+          done
 
       - name: Authenticate Docker to AWS ECR
         run: |
-          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
 
-      - name: Build and Push Preprocessing Docker Image
+      - name: Build and Push Docker Images
         run: |
-          DOCKER_BUILDKIT=0 docker build \
-            -t ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.preprocessing_name }}:latest \
-            -f ${{ env.PREPROCESSING_DOCKERFILE }} .
-          docker push ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.preprocessing_name }}:latest
+          for IMAGE in preprocessing training model_registry; do
+            DOCKER_BUILDKIT=0 docker build \
+              -t ${{ env.ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/demo-sagemaker-multimodel-$IMAGE:latest \
+              -f Dockerfile.$IMAGE .
+            docker push ${{ env.ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/demo-sagemaker-multimodel-$IMAGE:latest
+          done
 
-      - name: Build and Push Training Docker Image
+      - name: Install Python Dependencies
         run: |
-          DOCKER_BUILDKIT=0 docker build \
-            -t ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.training_name }}:latest \
-            -f ${{ env.TRAINING_DOCKERFILE }} .
-          docker push ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.training_name }}:latest
-
-      - name: Build and Push Model Registry Docker Image
-        run: |
-          DOCKER_BUILDKIT=0 docker build \
-            -t ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.model_registry_name }}:latest \
-            -f ${{ env.MODEL_REGISTRY_DOCKERFILE }} .
-          docker push ${{ env.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.model_registry_name }}:latest
-      
-      - name: Install dependencies
-        run: | 
           python -m pip install --upgrade pip
           pip install sagemaker==2.227.0 boto3
           pip install -r requirements.txt
@@ -99,14 +79,14 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: 'us-east-1'
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
         run: |
           python create_sagemaker_pipeline.py
-      
+
       - name: Execute Pipeline
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: 'us-east-1'
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
         run: |
           aws sagemaker start-pipeline-execution --pipeline-name ${{ env.PIPELINE_NAME }}
