@@ -71,7 +71,7 @@ if __name__ == "__main__":
         "eta": os.getenv("SM_HP_eta", 0.3)
     }
 
-    target_column = os.getenv("TARGET_COLUMN", "target")
+    target_column = os.getenv("TARGET_COLUMN", "price")
 
     try:
         # Load and prepare data

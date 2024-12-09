@@ -78,6 +78,9 @@ training_estimator = XGBoost(
         "num_round": 100,
         "max_depth": 6,
         "eta": 0.3
+    },
+    environment={
+        "TARGET_COLUMN": "price"  # Update as needed
     }
 )
 
