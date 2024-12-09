@@ -1,18 +1,16 @@
 # Core ML Libraries
-pandas==2.0.2               # Compatible with Python 3.11
-numpy==1.24.3               # Works with scikit-learn and Pandas
-scikit-learn==1.2.2         # Works with Python 3.11 and Pandas 2.1.x
+pandas==1.5.3               # Supports Int64Index
+numpy==1.24.3               # Compatible with scikit-learn and pandas
+scikit-learn==1.2.2         # Works with Python 3.11
 
-# Cython and Build Tools (Avoid pyproject.toml Errors)
-Cython==0.29.36             # Compatible with scikit-learn builds
-setuptools==67.8.0          # Avoids `numpy.distutils` deprecation
+# Build Tools (Avoid pyproject.toml Errors)
+Cython==0.29.36             # Required by scikit-learn
+setuptools==67.8.0          # Prevents numpy.distutils errors
 wheel==0.40.0               # Required for building C extensions
 
 # AWS SDKs
-boto3==1.26.158             # Latest for working with AWS
-sagemaker==2.159.0          # Latest for SageMaker pipelines
+boto3==1.26.158             # For AWS SDK
+sagemaker==2.159.0          # Latest SageMaker SDK
 
 # Utility Libraries
 colorlog==6.7.0             # Optional for colored logs
-pydantic
-pydantic_core
