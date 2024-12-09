@@ -14,3 +14,4 @@ sagemaker==2.159.0          # Latest SageMaker SDK
 
 # Utility Libraries
 colorlog==6.7.0             # Optional for colored logs
+pydantic
