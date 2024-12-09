@@ -45,8 +45,8 @@ jobs:
 
       - name: Get Default S3 Bucket Name
         id: get_bucket_name
-        run: echo "BUCKET_NAME=$(aws sagemaker describe-domain --domain-id $(aws sagemaker list-domains --query 'Domains[0].DomainId' --output text) --query 'DefaultUserSettings.ExecutionRole' --output text)" >> $GITHUB_ENV
-
+        run: echo "BUCKET_NAME=$(aws sagemaker list-buckets --query 'Buckets[0].Name' --output text)" >> $GITHUB_ENV
+      
       - name: Define Preprocessing Repository Name
         run: |
           echo "PREPROCESSING_NAME=demo-sagemaker-multimodel-preprocessing" >> $GITHUB_ENV

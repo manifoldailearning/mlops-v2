@@ -30,7 +30,6 @@ model_package_group_name = "EndEndPackage"
 
 # Upload train.py to S3
 train_script_s3_uri = f"s3://{default_bucket}/scripts/train.py"
-boto3.client("s3").upload_file("train.py", default_bucket, "scripts/train.py")
 
 # Fetch image URIs from the config
 preprocessing_image_uri = config.image_uris['preprocessing']
