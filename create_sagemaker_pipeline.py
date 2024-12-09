@@ -98,7 +98,8 @@ training_step = TrainingStep(
 )
 
 # Evaluation Step
-evaluation_image_uri = sagemaker.image_uris.retrieve("sklearn", region, "0.23-1")
+# Use SageMaker's built-in XGBoost container for evaluation
+evaluation_image_uri = sagemaker.image_uris.retrieve("xgboost", region, "1.5-1")
 
 evaluation_processor = ScriptProcessor(
     image_uri=evaluation_image_uri,
