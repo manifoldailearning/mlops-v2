@@ -66,7 +66,8 @@ processing_step = ProcessingStep(
 
 # Training Step
 training_estimator = XGBoost(
-    entry_point=train_script_s3_uri,
+    entry_point="train.py",
+    source_dir=".",
     framework_version="1.5-1",
     instance_type="ml.m5.large",
     instance_count=1,
