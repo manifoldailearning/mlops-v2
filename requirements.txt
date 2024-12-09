@@ -1,5 +1,5 @@
 # Core ML Libraries
-pandas==2.1.2               # Compatible with Python 3.11
+pandas==2.0.2               # Compatible with Python 3.11
 numpy==1.24.3               # Works with scikit-learn and Pandas
 scikit-learn==1.2.2         # Works with Python 3.11 and Pandas 2.1.x
 
