@@ -12,7 +12,7 @@ jobs:
     env:
       AWS_REGION: us-east-1
       PIPELINE_NAME: 'MLOpsPipeline'
-      BUCKET_NAME: 'sagemaker-us-east-1-866824485776'  # Define your default S3 bucket here
+      BUCKET_NAME: 'sagemaker-us-east-1-866824485776'
 
     steps:
       - name: Checkout Code
@@ -21,7 +21,7 @@ jobs:
       - name: Set Up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: 3.9  # Use a version compatible with SageMaker containers
 
       - name: Set Up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -45,8 +45,7 @@ jobs:
         run: echo "ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_ENV
 
       - name: Define Preprocessing Repository Name
-        run: |
-          echo "PREPROCESSING_NAME=demo-sagemaker-multimodel-preprocessing" >> $GITHUB_ENV
+        run: echo "PREPROCESSING_NAME=demo-sagemaker-multimodel-preprocessing" >> $GITHUB_ENV
 
       - name: Ensure ECR Repository Exists
         run: |
@@ -59,14 +58,14 @@ jobs:
 
       - name: Build and Push Preprocessing Docker Image
         run: |
-          DOCKER_BUILDKIT=0 docker build \
+          DOCKER_BUILDKIT=1 docker build \
             -t ${{ env.ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PREPROCESSING_NAME }}:latest \
             -f Dockerfile.preprocessing .
           docker push ${{ env.ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PREPROCESSING_NAME }}:latest
 
       - name: Install Python Dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           pip install sagemaker==2.227.0 boto3
           pip install -r requirements.txt
 
